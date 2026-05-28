@@ -8,42 +8,21 @@
  * ============================================
  */
 
-const mysql = require('mysql2/promise');
+const mysql = require("mysql2/promise");
 
-// ------------------------------------
-// Create a connection pool WITHOUT a specific database
-// (used only for initial DB creation)
-// ------------------------------------
-const createInitialPool = () => {
-  return mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    waitForConnections: true,
-    connectionLimit: 5,
-    queueLimit: 0,
-  });
-};
-
-// ------------------------------------
-// Create the main connection pool WITH the database selected
-// (used throughout the app for all queries)
-// ------------------------------------
-const createPool = () => {
-  return mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT, 10) || 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'resume_analyzer',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    // Enable named placeholders for cleaner queries
-    namedPlaceholders: true,
-  });
-};
+const pool = mysql.createPool({
+  host: process.env.MYSQLHOST,
+  user: process.env.MYSQLUSER,
+  password: process.env.MYSQLPASSWORD,
+  database: process.env.MYSQLDATABASE,
+  port: process.env.MYSQLPORT,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
 
 // ------------------------------------
 // SQL statements for table creation
@@ -111,21 +90,50 @@ const CREATE_TABLES_SQL = [
 // Initialize database and tables
 // ------------------------------------
 const initializeDatabase = async () => {
-  const dbName = process.env.DB_NAME || 'resume_analyzer';
-  let initPool;
+  const dbName = process.env.MYSQLDATABASE || 'resume_analyzer';
+  
+  try {
+    // Try to query the database directly first (works on Railway and existing local setups)
+    console.log('🔌 Testing database connection...');
+    await pool.query('SELECT 1');
+    console.log(`✅ Connection to database "${dbName}" established.`);
+  } catch (connectionError) {
+    // If connection failed because database doesn't exist, try to create it
+    if (connectionError.code === 'ER_BAD_DB_ERROR') {
+      console.log(`Database "${dbName}" not found. Attempting to create it...`);
+      let initPool;
+      try {
+        initPool = mysql.createPool({
+          host: process.env.MYSQLHOST,
+          user: process.env.MYSQLUSER,
+          password: process.env.MYSQLPASSWORD,
+          port: process.env.MYSQLPORT,
+          waitForConnections: true,
+          connectionLimit: 5,
+          queueLimit: 0,
+          ssl: {
+            rejectUnauthorized: false
+          }
+        });
+        await initPool.query(
+          `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+        );
+        console.log(`✅ Database "${dbName}" created successfully.`);
+      } catch (createError) {
+        console.error("Database creation failed:", createError);
+        throw createError;
+      } finally {
+        if (initPool) await initPool.end();
+      }
+    } else {
+      // If it's some other connection error, throw it
+      console.error("Database connection failed:", connectionError);
+      throw connectionError;
+    }
+  }
 
   try {
-    // Step 1: Connect without a database and create it if needed
-    initPool = createInitialPool();
-    await initPool.query(
-      `CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-    );
-    console.log(`✅ Database "${dbName}" is ready.`);
-    await initPool.end();
-
-    // Step 2: Connect to the newly created database and create tables
-    const pool = createPool();
-
+    // Step 2: Create tables if they do not exist
     for (const sql of CREATE_TABLES_SQL) {
       await pool.query(sql);
     }
@@ -144,13 +152,10 @@ const initializeDatabase = async () => {
 
     return pool;
   } catch (error) {
-    // Clean up the initial pool if it's still open
-    if (initPool) {
-      try { await initPool.end(); } catch (_) { /* ignore */ }
-    }
-    console.error('❌ Database initialization failed:', error.message);
+    console.error("Database initialization failed:", error);
     throw error;
   }
 };
 
-module.exports = { initializeDatabase, createPool };
+pool.initializeDatabase = initializeDatabase;
+module.exports = pool;
