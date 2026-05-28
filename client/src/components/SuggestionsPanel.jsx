@@ -63,74 +63,96 @@ export default function SuggestionsPanel({
   projectEvaluation = '',
 }) {
   const [showAll, setShowAll] = useState(false);
-  const allSuggestions = [...suggestions, ...keywordOptimization];
+  const allSuggestions = suggestions;
   const visibleSuggestions = showAll ? allSuggestions : allSuggestions.slice(0, 5);
 
   return (
-    <div className="glass card-glow rounded-2xl p-6">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-          <HiOutlineLightBulb className="h-5 w-5 text-accent-amber" />
+    <div className="glass card-glow rounded-2xl p-6 flex flex-col justify-between">
+      <div>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="h-10 w-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <HiOutlineLightBulb className="h-5 w-5 text-accent-amber" />
+          </div>
+          <div>
+            <h3 className="font-display font-semibold text-dark-900 dark:text-white">
+              Suggestions & Insights
+            </h3>
+            <p className="text-xs text-dark-500 dark:text-dark-400">
+              {allSuggestions.length} improvement{allSuggestions.length !== 1 ? 's' : ''} found
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-display font-semibold text-dark-900 dark:text-white">
-            Suggestions & Insights
-          </h3>
-          <p className="text-xs text-dark-500 dark:text-dark-400">
-            {allSuggestions.length} improvement{allSuggestions.length !== 1 ? 's' : ''} found
+
+        {/* Evaluations */}
+        {(experienceEvaluation || projectEvaluation) && (
+          <div className="space-y-3 mb-5">
+            {experienceEvaluation && (
+              <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800">
+                <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1">
+                  Experience Evaluation
+                </p>
+                <p className="text-sm text-dark-700 dark:text-dark-300 leading-relaxed">
+                  {experienceEvaluation}
+                </p>
+              </div>
+            )}
+            {projectEvaluation && (
+              <div className="p-4 rounded-xl bg-cyan-50 dark:bg-cyan-900/10 border border-cyan-200 dark:border-cyan-800">
+                <p className="text-xs font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 mb-1">
+                  Project Evaluation
+                </p>
+                <p className="text-sm text-dark-700 dark:text-dark-300 leading-relaxed">
+                  {projectEvaluation}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Suggestion items */}
+        <div className="space-y-2">
+          {visibleSuggestions.map((s, i) => (
+            <SuggestionItem key={i} suggestion={s} index={i} />
+          ))}
+        </div>
+
+        {allSuggestions.length > 5 && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="mt-4 text-sm font-medium text-primary-500 hover:text-primary-400 transition-colors"
+          >
+            {showAll
+              ? 'Show less'
+              : `Show ${allSuggestions.length - 5} more suggestions`}
+          </button>
+        )}
+
+        {allSuggestions.length === 0 && (
+          <p className="text-sm text-dark-500 dark:text-dark-400 text-center py-4">
+            No suggestions available yet. Analyze your resume first.
           </p>
-        </div>
+        )}
       </div>
 
-      {/* Evaluations */}
-      {(experienceEvaluation || projectEvaluation) && (
-        <div className="space-y-3 mb-5">
-          {experienceEvaluation && (
-            <div className="p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800">
-              <p className="text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1">
-                Experience Evaluation
-              </p>
-              <p className="text-sm text-dark-700 dark:text-dark-300 leading-relaxed">
-                {experienceEvaluation}
-              </p>
-            </div>
-          )}
-          {projectEvaluation && (
-            <div className="p-4 rounded-xl bg-cyan-50 dark:bg-cyan-900/10 border border-cyan-200 dark:border-cyan-800">
-              <p className="text-xs font-semibold uppercase tracking-wider text-cyan-600 dark:text-cyan-400 mb-1">
-                Project Evaluation
-              </p>
-              <p className="text-sm text-dark-700 dark:text-dark-300 leading-relaxed">
-                {projectEvaluation}
-              </p>
-            </div>
-          )}
+      {/* Keywords Optimization section */}
+      {keywordOptimization?.length > 0 && (
+        <div className="mt-6 pt-5 border-t border-dark-200 dark:border-dark-800">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-dark-500 dark:text-dark-400 mb-3">
+            Recommended Keywords to Include
+          </h4>
+          <div className="flex flex-wrap gap-2">
+            {keywordOptimization.map((keyword, i) => (
+              <span
+                key={i}
+                className="px-3 py-1.5 rounded-xl text-xs font-medium bg-primary-500/5 dark:bg-primary-400/5 border border-primary-200/50 dark:border-primary-800/50 text-primary-700 dark:text-primary-300 hover:scale-105 transition-transform cursor-default"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
         </div>
-      )}
-
-      {/* Suggestion items */}
-      <div className="space-y-2">
-        {visibleSuggestions.map((s, i) => (
-          <SuggestionItem key={i} suggestion={s} index={i} />
-        ))}
-      </div>
-
-      {allSuggestions.length > 5 && (
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="mt-4 text-sm font-medium text-primary-500 hover:text-primary-400 transition-colors"
-        >
-          {showAll
-            ? 'Show less'
-            : `Show ${allSuggestions.length - 5} more suggestions`}
-        </button>
-      )}
-
-      {allSuggestions.length === 0 && (
-        <p className="text-sm text-dark-500 dark:text-dark-400 text-center py-4">
-          No suggestions available yet. Analyze your resume first.
-        </p>
       )}
     </div>
   );
 }
+
