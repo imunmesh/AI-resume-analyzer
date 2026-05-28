@@ -32,11 +32,20 @@ const getModelInstance = (modelName) => {
  * Local AI Simulators (used when API Key is leaked or offline)
  */
 const generateMockAnalysis = (resumeText) => {
-  // Simple skills detection
+  const text = resumeText || '';
+  
+  // 1. Detect skills in the resume
   const detectedSkills = [];
-  const commonSkills = ['React', 'Node.js', 'Angular', 'Vue', 'Python', 'Java', 'Spring Boot', 'AWS', 'Docker', 'Kubernetes', 'MySQL', 'MongoDB', 'PostgreSQL', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Git', 'JWT'];
+  const commonSkills = [
+    'React', 'Node.js', 'Angular', 'Vue', 'Python', 'Java', 'Spring Boot', 'Django', 'Flask',
+    'Express', 'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'MySQL', 'MongoDB', 'PostgreSQL',
+    'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Git', 'JWT', 'Redux', 'GraphQL', 'REST APIs',
+    'Microservices', 'CI/CD', 'Machine Learning', 'Data Science', 'Sass', 'Tailwind', 'Bootstrap'
+  ];
+  
   commonSkills.forEach(s => {
-    if (new RegExp(`\\b${s}\\b`, 'i').test(resumeText)) {
+    const escaped = s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    if (new RegExp(`\\b${escaped}\\b`, 'i').test(text)) {
       detectedSkills.push(s);
     }
   });
@@ -45,20 +54,152 @@ const generateMockAnalysis = (resumeText) => {
     detectedSkills.push('JavaScript', 'HTML', 'CSS', 'Git');
   }
 
-  const missingSkills = ['Docker', 'Kubernetes', 'AWS', 'TypeScript', 'System Design'].filter(s => !detectedSkills.includes(s));
+  // 2. Score calculation based on content detection
+  let score = 55; // Base score
+  
+  const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/.test(text);
+  const hasPhone = /\b\+?\d{1,4}[-.\s]?\(?\d{1,3}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4}[-.\s]?\d{1,9}\b/.test(text);
+  const hasGitHub = /github\.com/i.test(text);
+  const hasLinkedIn = /linkedin\.com/i.test(text);
+  const hasEducation = /education|university|college|bachelor|master|degree/i.test(text);
+  const hasProjects = /projects|portfolio|personal projects/i.test(text);
+  const hasExperience = /experience|employment|work history|career history|worked/i.test(text);
+  
+  // Count action verbs
+  const actionVerbs = ['developed', 'built', 'implemented', 'designed', 'led', 'managed', 'optimized', 'created', 'delivered', 'engineered', 'achieved', 'initiated'];
+  let actionVerbCount = 0;
+  actionVerbs.forEach(v => {
+    const matches = text.match(new RegExp(`\\b${v}\\b`, 'gi'));
+    if (matches) actionVerbCount += matches.length;
+  });
+
+  // Count numbers indicating metrics
+  const metricMatches = text.match(/\b\d+%\b|\b(increased|reduced|improved|saved|managed)\b.*\b\d+\b/gi);
+  const hasMetrics = metricMatches && metricMatches.length > 0;
+
+  if (hasEmail) score += 5;
+  if (hasPhone) score += 5;
+  if (hasGitHub || hasLinkedIn) score += 5;
+  if (hasEducation) score += 10;
+  if (hasProjects) score += 10;
+  if (hasExperience) score += 10;
+  if (detectedSkills.length >= 8) score += 10;
+  else if (detectedSkills.length >= 4) score += 5;
+  if (actionVerbCount >= 5) score += 5;
+  if (hasMetrics) score += 5;
+
+  score = Math.min(95, Math.max(45, score));
+
+  // 3. Generate specific actionable recommendations to fix the resume
+  const suggestions = [];
+
+  if (!hasMetrics) {
+    suggestions.push(
+      'Quantify your business achievements (e.g., replace "responsible for website performance" with "enhanced page load times by 35% using lazy loading").'
+    );
+  } else {
+    suggestions.push(
+      'Continue adding quantified results and metrics to all experience bullet points to strongly demonstrate direct business impact.'
+    );
+  }
+
+  if (actionVerbCount < 4) {
+    suggestions.push(
+      'Start each bullet point under your experience/projects with a strong action verb (e.g. "Engineered", "Optimized", "Spearheaded") rather than passive descriptions.'
+    );
+  }
+
+  if (!hasEmail) {
+    suggestions.push('Add a professional email address to the top of your resume contact section.');
+  }
+  if (!hasPhone) {
+    suggestions.push('Include a contact phone number so hiring managers and automated systems can reach you.');
+  }
+  if (!hasGitHub && !hasLinkedIn) {
+    suggestions.push('Add links to your professional profiles (LinkedIn, GitHub, or personal portfolio) to let recruiters view your online presence.');
+  }
+  if (!hasEducation) {
+    suggestions.push('Include a dedicated "Education" section outlining your academic background, degree, and graduation dates.');
+  }
+  if (!hasProjects) {
+    suggestions.push('Add a "Projects" or "Portfolio" section with 2-3 technical projects to showcase practical application of your skills.');
+  }
+  if (!hasExperience) {
+    suggestions.push('Create a structured "Experience" or "Work History" section using reverse-chronological order to format your career path.');
+  }
+
+  // Word count suggestion
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount < 180) {
+    suggestions.push('Your resume is under 180 words. Expand your role descriptions, responsibilities, and technical stacks to provide sufficient context for ATS systems.');
+  } else if (wordCount > 1200) {
+    suggestions.push('Your resume exceeds 1200 words. Condense your descriptions and focus only on highly relevant experiences to keep it strictly within 1-2 pages.');
+  }
+
+  // Categories suggestions
+  if (detectedSkills.length < 5) {
+    suggestions.push('Expand your skills section with more technical tools, languages, and frameworks relevant to your target career.');
+  } else {
+    suggestions.push('Organize your skills section into clear sub-categories (e.g., Languages, Frameworks, Developer Tools) to improve scanning readability.');
+  }
+
+  // 4. Recommended Roles
+  const recommendedRoles = [];
+  const hasFrontend = ['React', 'Angular', 'Vue', 'TypeScript', 'JavaScript', 'HTML', 'CSS', 'Sass', 'Tailwind'].some(s => detectedSkills.includes(s));
+  const hasBackend = ['Node.js', 'Express', 'Python', 'Java', 'Spring Boot', 'Django', 'Flask', 'PostgreSQL', 'MySQL', 'MongoDB'].some(s => detectedSkills.includes(s));
+  const hasCloud = ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Azure', 'GCP'].some(s => detectedSkills.includes(s));
+  const hasData = ['Python', 'Machine Learning', 'Data Science'].some(s => detectedSkills.includes(s));
+
+  if (hasFrontend && hasBackend) {
+    recommendedRoles.push('Full Stack Developer', 'Software Engineer');
+  } else if (hasFrontend) {
+    recommendedRoles.push('Frontend Engineer', 'UI Developer', 'Web Developer');
+  } else if (hasBackend) {
+    recommendedRoles.push('Backend Engineer', 'Software Engineer', 'Systems Engineer');
+  }
+
+  if (hasCloud) {
+    recommendedRoles.push('DevOps Engineer', 'Cloud Infrastructure Engineer');
+  }
+  if (hasData) {
+    recommendedRoles.push('Data Scientist', 'AI/ML Engineer');
+  }
+
+  if (recommendedRoles.length === 0) {
+    recommendedRoles.push('Software Engineer', 'Full Stack Developer', 'Frontend Engineer');
+  }
+
+  // 5. Keyword Optimization (Skills from common stacks that the user is missing)
+  const missingSkills = [];
+  if (hasFrontend && !detectedSkills.includes('TypeScript')) missingSkills.push('TypeScript');
+  if (hasFrontend && !detectedSkills.includes('Redux')) missingSkills.push('Redux');
+  if (hasBackend && !detectedSkills.includes('Docker')) missingSkills.push('Docker');
+  if (hasBackend && !detectedSkills.includes('AWS')) missingSkills.push('AWS');
+  if (hasBackend && !detectedSkills.includes('Microservices')) missingSkills.push('Microservices');
+  if (!detectedSkills.includes('CI/CD')) missingSkills.push('CI/CD Pipelines');
+  if (!detectedSkills.includes('REST APIs')) missingSkills.push('REST APIs');
+  if (!detectedSkills.includes('GraphQL')) missingSkills.push('GraphQL');
+
+  const generalTools = ['Docker', 'Kubernetes', 'AWS', 'System Design', 'Git', 'Unit Testing', 'TypeScript'];
+  generalTools.forEach(t => {
+    if (!detectedSkills.includes(t) && !missingSkills.includes(t) && missingSkills.length < 5) {
+      missingSkills.push(t);
+    }
+  });
+
+  // 6. Experience and Project evaluations
+  const experienceEvaluation = `Your experience section is structurally sound, featuring detected skills like ${detectedSkills.slice(0, 4).join(', ')}. However, to elevate this section, shift the language from daily tasks to active results. Ensure each job bullet describes a problem you solved, the technology used, and the measurable outcome.`;
+  
+  const projectEvaluation = `Your projects section displays key exposure to technologies such as ${detectedSkills.slice(-3).join(', ')}. To improve, add architectural context to each description. Discuss structural choices (e.g. why SQL vs NoSQL was selected, or how component hierarchy was managed) and any quantitative latency/rendering speed improvements.`;
 
   return {
-    atsScore: 78,
-    missingSkills: missingSkills,
-    suggestions: [
-      'Quantify your business achievements (e.g., enhanced loading performance by 30%, resolved 12+ bug backlogs).',
-      'Integrate cloud deployment highlights or certifications (e.g. AWS, Docker containers).',
-      'Optimize keyword distribution to match modern developer descriptions.'
-    ],
-    recommendedRoles: ['Software Engineer', 'Full Stack Developer', 'Frontend Engineer'],
-    keywordOptimization: [...missingSkills, 'CI/CD Pipelines', 'REST APIs', 'Microservices'],
-    experienceEvaluation: 'Your experience displays a strong foundation in full stack development. However, many bullet points focus on listing tasks (e.g. "built app") instead of highlighting business impact. Transitioning them into action-oriented statements will increase recruiter engagement.',
-    projectEvaluation: 'Projects are well laid out but would benefit from architectural details. Mentioning specific database choices (e.g. indexing, normalization) or performance measures will highlight technical competency.'
+    atsScore: score,
+    missingSkills: missingSkills.slice(0, 4),
+    suggestions: suggestions,
+    recommendedRoles: Array.from(new Set(recommendedRoles)).slice(0, 3),
+    keywordOptimization: missingSkills,
+    experienceEvaluation: experienceEvaluation,
+    projectEvaluation: projectEvaluation
   };
 };
 
