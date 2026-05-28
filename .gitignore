@@ -1,0 +1,28 @@
+# Local environment variables
+.env
+.env.txt
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Firebase cache and config files (local overrides)
+.firebase/
+.firebaserc
+firebase.json
+
+# Local builds or temp assets
+dist/
+build/
+client/yes/
