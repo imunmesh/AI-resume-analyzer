@@ -10,6 +10,22 @@
 
 const mysql = require("mysql2/promise");
 
+// Add temporary debug logging before pool creation:
+console.log("MYSQLHOST =", process.env.MYSQLHOST);
+console.log("MYSQLUSER =", process.env.MYSQLUSER);
+console.log("MYSQLDATABASE =", process.env.MYSQLDATABASE);
+console.log("MYSQLPORT =", process.env.MYSQLPORT);
+
+// Check if any database variable is undefined (rejecting empty/undefined config)
+const requiredEnvVars = ["MYSQLHOST", "MYSQLUSER", "MYSQLPASSWORD", "MYSQLDATABASE", "MYSQLPORT"];
+for (const varName of requiredEnvVars) {
+  if (!process.env[varName]) {
+    console.error(`❌ Error: Database startup failed. Environment variable "${varName}" is undefined!`);
+    console.error("Please configure your Railway MySQL database variables in the Railway console.");
+    process.exit(1); // Stop startup
+  }
+}
+
 const pool = mysql.createPool({
   host: process.env.MYSQLHOST,
   user: process.env.MYSQLUSER,
@@ -90,7 +106,7 @@ const CREATE_TABLES_SQL = [
 // Initialize database and tables
 // ------------------------------------
 const initializeDatabase = async () => {
-  const dbName = process.env.MYSQLDATABASE || 'resume_analyzer';
+  const dbName = process.env.MYSQLDATABASE;
   
   try {
     // Try to query the database directly first (works on Railway and existing local setups)
